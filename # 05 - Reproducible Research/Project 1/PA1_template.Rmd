@@ -1,0 +1,205 @@
+---
+title: "Project 1"
+author: "Fernando Villarroel"
+---
+   
+This assignment is answering the questions detailed in the questionary. it is completed in a single R markdown document, and later processed by knitr and transformed into an HTML file.
+   
+####Loading and preprocessing the data
+The data is loaded in a data.frame with the name of ***activity***, the Class of every column is assigned at this moment:
+
+```{r LoadData}
+activity<-read.csv("activity.csv",colClasses=c("numeric","POSIXct","numeric"))
+```
+####What is mean total number of steps taken per day?
+  
+Firt is calculated the total steps taken per day and it is saved in a data.frame with the  name ***DailyActSumDF***.  
+  
+The **mean** and **median** total number of steps taken per day are calculated and stored in the variables ***DailyActMean*** and ***DailyActMedian*** respectivily.  
+
+```{r DailyActivity}
+DailyActSum<-tapply(activity$steps,activity$date,sum,na.rm=F)
+DailyNames<-names(DailyActSum)
+DailyActSum<-as.numeric(DailyActSum)
+DailyActSumDF<-data.frame(Date=DailyNames,TotalSteps=DailyActSum)
+DailyActMean<-round(mean(DailyActSum,na.rm=T),0)
+DailyActMedian<-round(median(DailyActSum,na.rm=T),0)
+```
+  
+The Plot is builded using **ggplot2***.  
+
+```{r HistDailyActivity,fig.height=4}
+
+library(ggplot2)
+
+gh<-ggplot(DailyActSumDF,aes(x=TotalSteps))+
+  geom_histogram(binwidth=2000,color="blue",fill="green")+
+  ggtitle("Histogram of the total steps per day \n ") +         
+  theme(plot.title = element_text(lineheight=.8, face="bold"))+
+  labs(x = "Total Steps per day", y = "Frecuency")
+  
+print(gh)
+png("./figures/1-DailyActSum.png")
+print(gh)
+dev.off()
+
+```
+  
+The the mean total number of steps taken per day is: **`r DailyActMean`**.  
+The the median total number of steps taken per day is **`r DailyActMedian`**.  
+  
+####What is the average daily activity pattern?
+  
+Firt is calculated the average steps taken per interval across all the days and it is saved in a data.frame with the  name ***IntervalActMeanDF***.  
+  
+The interval in which is taken the maximun numbers of steps is calculates and stored in the variable **MaxInterval**.  
+
+```{r IntervalyActivity}
+IntervalActMean<-tapply(activity$steps,activity$interval,mean,na.rm=T)
+IntervalNames<-names(IntervalActMean)
+IntervalActMean<-as.numeric(IntervalActMean)
+IntervalActMeanDF<-data.frame(Interval=as.numeric(IntervalNames),AverageSteps=IntervalActMean)
+IntervalActMax<-max(IntervalActMean,na.rm=T)
+IntervalActMaxLog<-IntervalActMean==IntervalActMax
+MaxInterval<-IntervalNames[IntervalActMaxLog]
+```
+  
+The Plot is builded using **ggplot2***.  
+
+```{r TimeSeriePlot,fig.height=4}
+
+library(ggplot2)
+
+gi<-ggplot(IntervalActMeanDF,aes(x=Interval,y=AverageSteps))+
+  geom_point(color="blue",size=2)+
+  geom_path(color="blue")+
+  ggtitle("Average steps by Interval\n ") +         
+  theme(plot.title = element_text(lineheight=.8, face="bold"))+
+  labs(y = "Average Steps")
+  
+print(gi)
+png("./figures/2-IntervalActMean.png")
+print(gi)
+dev.off()
+```
+  
+On average across all the days in the dataset the 5-minute interval which contains the maximum number of step is the: **`r MaxInterval`**.  
+  
+####Imputing missing values
+  
+1)  To calculate the number of missing values is used the functions ***is.na*** and ***sum***, the number is stored in the variable ***isnanumber***. 
+  
+```{r NACalculation}
+isnanumber<-sum(is.na(activity$steps))
+```
+  
+The number of  missing values in the dataset is: **`r isnanumber`**
+  
+2)  The strategy for filling the missing values in the dataset is use the mean for that 5-minute interval in every missed value.
+
+3) The new dataset that is equal to the original dataset but with the missing data filled with the strategy described in point 2 is ***ActNoNA***, to create it was used a loop.
+    
+```{r FillMissingValues}
+ActNoNA<-activity
+for(i in 1:nrow(ActNoNA)){
+  isna<-is.na(ActNoNA[i,1])
+  if(isna==T){
+    IntLog<-IntervalNames==ActNoNA[i,3]
+    ActNoNA[i,1]<-round(IntervalActMean[IntLog],0)
+  }
+
+}
+```
+  
+4) To create the new **histogram** and calculate the new **mean** and **mediam** are used the same steps as the first task.
+  
+```{r DailyActNoNA}
+DailyActNoNASum<-tapply(ActNoNA$steps,ActNoNA$date,sum,na.rm=F)
+DailyNoNANames<-names(DailyActNoNASum)
+DailyActNoNASum<-as.numeric(DailyActNoNASum)
+DailyActNoNASumDF<-data.frame(Date=DailyNoNANames,TotalSteps=DailyActNoNASum)
+DailyActNoNAMean<-round(mean(DailyActNoNASum,na.rm=T),0)
+DifMean<-abs(DailyActNoNAMean-DailyActMean)
+DailyActNoNAMedian<-round(median(DailyActNoNASum,na.rm=T),0)
+DifMedian<-abs(DailyActNoNAMedian-DailyActMedian)
+```
+  
+The Plot is builded using **ggplot2***.  
+
+```{r HistDailyActNoNA,fig.height=4}
+
+library(ggplot2)
+
+ghnona<-ggplot(DailyActNoNASumDF,aes(x=TotalSteps))+
+  geom_histogram(binwidth=2000,color="blue",fill="green")+
+  ggtitle("Histogram of the total steps per day \n ") +         
+  theme(plot.title = element_text(lineheight=.8, face="bold"))+
+  labs(x = "Total Steps per day", y = "Frecuency")
+  
+print(ghnona)
+png("./figures/3-DailyActNoNASum.png")
+print(gh)
+dev.off()
+```
+  
+The new mean total number of steps taken per day is: **`r DailyActNoNAMean`**, the difference with the previous value is **`r DifMean`** steps.  
+   
+The new median total number of steps taken per day is **`r DailyActNoNAMedian`**, the difference with the previous value is **`r DifMedian`** steps.  
+   
+The main differences with the data sets with missing values and the data set without missing values is that the frequency of the average values increase around 10 points.
+   
+####Are there differences in activity patterns between weekdays and weekends?
+   
+1)  A new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day has been create, the column has the name of ***TypeDay***.
+   
+```{r WeekDay}
+Sys.setlocale("LC_TIME", "C")
+ActNoNA$weekday<-as.factor(weekdays(ActNoNA$date))
+TypeDay<-character()
+for(i in 1:nrow(ActNoNA)){
+  if(ActNoNA[i,4]=="Monday"|ActNoNA[i,4]=="Tuesday"|ActNoNA[i,4]=="Wednesday"|ActNoNA[i,4]=="Thursday"|ActNoNA[i,4]=="Friday"){
+    TypeDay[i]<-"Weekday"
+  } else {TypeDay[i]<-"Weekend"}
+}
+ActNoNA$TypeDay<-TypeDay
+```
+
+2.  First the data is prepare in a data set in which the first column has the 5-minute interval -***Interval***- the second column has the average for that interval depending of the type of day -***Mean***- and the third column has the type of day, Weekday or Weekend -***TypeDay***-.
+
+```{r IntervalyActivityperTypeDay}
+IntercalActNoNASTD<-split(ActNoNA,ActNoNA$TypeDay)
+
+IntervalActNoNAMeanWD<-tapply(IntercalActNoNASTD[[1]]$steps,IntercalActNoNASTD[[1]]$interval,mean,na.rm=T)
+IntervalNoNANamesWD<-names(IntervalActNoNAMeanWD)
+IntervalActNoNAMeanWD<-as.numeric(IntervalActNoNAMeanWD)
+IntervalActNoNAMeanDFWD<-data.frame(Interval=as.numeric(IntervalNoNANamesWD),AverageSteps=IntervalActNoNAMeanWD,TypeDay="Weekday")
+
+IntervalActNoNAMeanWE<-tapply(IntercalActNoNASTD[[2]]$steps,IntercalActNoNASTD[[2]]$interval,mean,na.rm=T)
+IntervalNoNANamesWE<-names(IntervalActNoNAMeanWE)
+IntervalActNoNAMeanWE<-as.numeric(IntervalActNoNAMeanWE)
+IntervalActNoNAMeanDFWE<-data.frame(Interval=as.numeric(IntervalNoNANamesWE),AverageSteps=IntervalActNoNAMeanWE,TypeDay="Weekend")
+
+IntervalActNoNAMeanDF<-rbind(IntervalActNoNAMeanDFWD,IntervalActNoNAMeanDFWE)
+
+```
+  
+The Plot is builded using **ggplot2***.  
+
+```{r TimeSeriePlotperTypeDay,fig.height=4}
+
+library(ggplot2)
+
+gtd<-ggplot(IntervalActNoNAMeanDF,aes(x=Interval,y=AverageSteps))+
+  geom_point(color="blue",size=1)+
+  geom_path(color="blue")+
+  ggtitle("Average steps by Interval and type of day\n ") +         
+  facet_grid(TypeDay~.)+
+  theme(plot.title = element_text(lineheight=.8, face="bold"))+
+  labs(y = "Average Steps")
+  
+print(gtd)
+png("./figures/4-IntervalActNoNAMean.png")
+print(gh)
+dev.off()
+
+```
